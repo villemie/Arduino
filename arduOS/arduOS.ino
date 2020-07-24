@@ -1,21 +1,61 @@
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-
+const int piezoPin = 9; // change to pin of Piezo
+int program = 0;
+int pState = 0;
 void setup() {
   Serial.begin(9600);
   lcd.begin(16,2);
   start();
-  lcd.print("Valikko");
+  
   }
 
 void loop() {
-  int pressed = press();
-  if(pressed != -1){
-    Serial.print(pressed);
-    Serial.print("\n");
-  }
+  lcd.print("Laskin");
+  menu();
   
     
+}
+void menu(){
+  String programs[] = {"Laskin", "Sekuntikello", "Aaniohjelma"};
+  int mIndex = 0;
+  while(true){
+    int pressed = press();
+    if(pressed != -1 || pressed != 2){
+    if(pressed == 0){
+      if(mIndex == 2)mIndex = 0;
+      else mIndex++;
+      lcd.clear();
+      lcd.print(programs[mIndex]);
+      Serial.println(mIndex);
+    }
+    if(pressed == 1){
+      switch(mIndex){
+        case 0:
+          lcd.clear();
+          lcd.print("Ohjelmaa ei ole :(");
+          delay(1000);
+          lcd.clear();
+          lcd.print(programs[mIndex]);
+        break;
+        case 1:
+          lcd.clear();
+          sekuntikello();
+          lcd.clear();
+          lcd.print(programs[mIndex]);
+        break;
+        case 2:
+          lcd.clear();
+          lcd.print("Ohjelmaa ei ole :(");
+         delay(1000);
+         lcd.clear();
+         lcd.print(programs[mIndex]);
+        break;
+        }
+     
+    }
+  }
+  }
 }
 void start(){
   
@@ -29,9 +69,45 @@ void start(){
        
     delay(500);
     
-  startSound();  
+  //startSound();  
   lcd.clear();
   delay(250);
+}
+void sekuntikello(){
+  lcd.print("Paina ok");
+  int painettu = -1;
+  bool counting = false;
+  int curTime, startTime;
+  
+  while(painettu != 2){
+    painettu = press();
+    if(painettu == 1 && counting == false){
+      counting = true;
+      startTime = millis();
+      
+    }
+    else if(painettu == 1 && counting == true){
+      counting = false;
+      curTime = millis();
+      lcd.clear();
+      lcd.print(formatTime(curTime-startTime));
+    }
+    else if(counting == true){
+      lcd.clear();
+      curTime = millis();
+      lcd.print(formatTime(curTime-startTime));
+      
+    }
+  }
+}
+String formatTime(int ms){
+  int sec = ms/1000;
+  ms = ms%1000;
+  String form = (String)sec;
+  form += ".";
+  form += (String)ms;
+  form += "s";
+  return form;
 }
 int press(){
   int SV = 0;//Sensor value
@@ -69,8 +145,9 @@ int press(){
       Serial.print(" ok: ");Serial.print(okHigh);Serial.print(" back: ");
       Serial.print(backHigh);Serial.print("\n");
       */
+      tone(piezoPin, 31, 30);
       return pressed;
-      delay(500);
+      
     }
     return -1;
 }
