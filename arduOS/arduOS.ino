@@ -3,6 +3,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 const int piezoPin = 9; // change to pin of Piezo
 int program = 0;
 int pState = 0;
+int pressTime; //is used to count time between two presses and avoiding double presses
 void setup() {
   Serial.begin(9600);
   lcd.begin(16,2);
@@ -16,6 +17,8 @@ void loop() {
   
     
 }
+
+
 void menu(){
   String programs[] = {"Laskin", "Sekuntikello", "Aaniohjelma"};
   int mIndex = 0;
@@ -46,8 +49,7 @@ void menu(){
         break;
         case 2:
           lcd.clear();
-          lcd.print("Ohjelmaa ei ole :(");
-         delay(1000);
+          aaniOhjelma();
          lcd.clear();
          lcd.print(programs[mIndex]);
         break;
@@ -64,7 +66,7 @@ void start(){
     for(int i = 0; i < intro.length(); i++){
     lcd.setCursor(i,0);
     lcd.print(intro[i]);
-    delay(100);
+    delay(50);
     }
        
     delay(500);
@@ -73,11 +75,109 @@ void start(){
   lcd.clear();
   delay(250);
 }
+void aaniOhjelma(){
+  lcd.print("Valitse taajuus (hz)");
+  delay(1000);
+  lcd.clear();
+  lcd.print("31");
+  int freqs[] = {31,250,600, 1000, 1500,2000,3000,5000,7500,10000,13000,18000};
+  int times[] = {100,200,300,400,500,750,1000,2000};
+  int indexF = 0;
+  int indexT = 0;
+  bool timeSelection = false; // Tells if time is alredy selected
+  while(true){
+    int pressed = press();
+    if(pressed == 2){
+      if(timeSelection == false)return;
+      else{
+        timeSelection = false;
+        lcd.clear();
+        lcd.write("31");
+        indexT = 0;
+        indexF = 0;
+        
+        }
+    }
+    else if(pressed == 1){
+      //Play sound
+      if(timeSelection == true){
+          tone(piezoPin, freqs[indexF],times[indexF]);
+          lcd.clear();
+          lcd.write("31");
+          indexF = 0;
+          indexT = 0;
+          timeSelection = false;
+        }
+       //Move to choose playing time
+       else{
+          lcd.clear();
+          lcd.write("Valitse aika (ms)");
+          delay(1000);
+          lcd.clear();
+          lcd.write("100");
+          timeSelection = true;
+        }
+    }
+    else if(pressed == 0){
+      lcd.clear();
+      if(timeSelection == false){
+        if(indexF == 11)indexF = 0;     
+         else indexF++;
+         lcd.print(freqs[indexF]);
+         Serial.println(indexF);
+         }
+       else{
+        if(indexT == 7)indexT = 0;
+        else indexT++;
+        lcd.print(times[indexT]);
+        
+    }
+  }
+}
+}
+
+
+String formatTime(long ms){
+  int sec = ms/1000;
+  int min = sec/60;
+  sec = sec - min*60;
+  ms = ms%1000;
+  String form = (String)min;
+  form += "min ";
+  form += (String)sec;
+  form += ".";
+  form += (String)ms;
+  form += "s";
+  return form;
+}
+int press(){
+  delay(50);
+  
+  if((millis()-pressTime)<500)return -1;
+  else if(analogRead(A0)>1020){
+    tone(piezoPin, 31, 30);
+    pressTime =millis();
+    return 0;
+  }
+  else if(analogRead(A1)>1020){
+    tone(piezoPin, 31, 30);
+    pressTime =millis();
+    return 1;
+  }
+  else if(analogRead(A2)>1020){
+    tone(piezoPin, 31, 30);
+    pressTime =millis();
+    return 2;
+  }
+  else return -1;
+  
+}
 void sekuntikello(){
+  
   lcd.print("Paina ok");
   int painettu = -1;
   bool counting = false;
-  int curTime, startTime;
+  long curTime, startTime;
   
   while(painettu != 2){
     painettu = press();
@@ -99,57 +199,6 @@ void sekuntikello(){
       
     }
   }
-}
-String formatTime(int ms){
-  int sec = ms/1000;
-  ms = ms%1000;
-  String form = (String)sec;
-  form += ".";
-  form += (String)ms;
-  form += "s";
-  return form;
-}
-int press(){
-  int SV = 0;//Sensor value
-  int nextHigh = 0;
-  int okHigh = 0;
-  int backHigh = 0;
-  for (int i = 0; i <= 10; i++) {
-    SV = analogRead(A0);
-    if(SV > nextHigh)nextHigh = SV;
-    SV = analogRead(A1);
-    if(SV > okHigh)okHigh = SV;
-    SV = analogRead(A2);
-    if(SV > backHigh)backHigh = SV;
-    delay(50);
-  }
-  int pressed = 0;
-  int highest = 0;
-  if(nextHigh > okHigh && nextHigh > backHigh){
-    pressed = 0;
-    highest = nextHigh;
-    }
-  if(okHigh > nextHigh && okHigh > backHigh){
-    pressed = 1;
-    highest = okHigh;
-    }
-  if(backHigh > okHigh && backHigh > nextHigh){
-    pressed = 2;
-    highest = backHigh;
-    }
-
-    if(highest > 1020){
-      /*
-      Serial.print("Painoit "); Serial.print(pressed);
-      Serial.print(". Volttimäärät: next:"); Serial.print(nextHigh);
-      Serial.print(" ok: ");Serial.print(okHigh);Serial.print(" back: ");
-      Serial.print(backHigh);Serial.print("\n");
-      */
-      tone(piezoPin, 31, 30);
-      return pressed;
-      
-    }
-    return -1;
 }
 void startSound(){
   /* 
